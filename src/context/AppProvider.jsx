@@ -1,9 +1,9 @@
-import { createContext, useContext, useMemo, useState, useEffect } from "react";
-import { db } from "../firebase/config";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { db } from "../firebase/config";
 
-import { AuthContext } from "./AuthContext.jsx";
 import useFirestore from "../hook/useFireStore.js";
+import { AuthContext } from "./AuthContext.jsx";
 export const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
@@ -25,11 +25,9 @@ export const AppProvider = ({ children }) => {
 
 	const rooms = useFirestore("rooms", roomsCondition);
 
-	const room = useMemo(() => {
+	const selectedRoom = useMemo(() => {
 		return rooms.find((room) => room.id === isSelectedRoomId);
 	}, [rooms, isSelectedRoomId]);
-	const selectedRoom = room ? room : rooms[0];
-
 	useEffect(() => {
 		setMembers([]);
 		if (selectedRoom && selectedRoom.members) {
@@ -49,7 +47,6 @@ export const AppProvider = ({ children }) => {
 			};
 		}
 	}, [uid, selectedRoom]);
-
 	return (
 		<AppContext.Provider
 			value={{

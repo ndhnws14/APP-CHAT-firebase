@@ -1,9 +1,9 @@
 import { PlusSquareOutlined } from "@ant-design/icons";
-import { Button, Collapse, Typography } from "antd";
+import { Avatar, Button, Collapse, Typography } from "antd";
 import { useContext } from "react";
 import styled from "styled-components";
+import avatarDefault from "../../../public/vite.svg";
 import { AppContext } from "../../context/AppProvider";
-
 const { Panel } = Collapse;
 const { Link } = Typography;
 
@@ -38,7 +38,6 @@ export default function RoomList() {
 	const handleAddRoom = () => {
 		setIsAddRoomVisible(true);
 	};
-
 	return (
 		<Collapse ghost defaultActiveKey={["1"]}>
 			<PanelStyled header='Danh sách các phòng' key={1}>
@@ -49,6 +48,10 @@ export default function RoomList() {
 							onClick={() => {
 								setIsSelectedRoomId(room.id);
 							}}>
+							<Avatar
+								style={{ marginRight: "10px" }}
+								src={room?.avatar === "default" ? avatarDefault : room?.avatar}
+							/>
 							{room.name}
 						</LinkStyled>
 					);

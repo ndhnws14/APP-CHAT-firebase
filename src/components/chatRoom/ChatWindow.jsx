@@ -1,15 +1,17 @@
-import { UserAddOutlined } from "@ant-design/icons";
-import { Avatar, Button, Form, Input, Tooltip, Alert } from "antd";
-import styled from "styled-components";
-import Message from "./Message";
+import { UploadOutlined, UserAddOutlined } from "@ant-design/icons";
+import { Alert, Avatar, Button, Form, Input, Tooltip } from "antd";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import moment from "moment";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import styled from "styled-components";
+import { v4 } from "uuid";
+import avatarDefault from "../../../public/vite.svg";
 import { AppContext } from "../../context/AppProvider";
-import { useContext, useState, useRef, useEffect, useMemo } from "react";
-import { db } from "../../firebase/config";
-import { serverTimestamp, collection, addDoc } from "firebase/firestore";
-
 import { AuthContext } from "../../context/AuthContext";
+import { db, storage } from "../../firebase/config";
 import useFirestore from "../../hook/useFireStore";
+import Message from "./Message";
 
 const HeaderStyled = styled.div`
 	display: flex;
@@ -20,6 +22,13 @@ const HeaderStyled = styled.div`
 	border-bottom: 1px solid rgb(230, 230, 230);
 
 	.header {
+		&__info_avt {
+			display: flex;
+			flex-direction: row;
+		}
+		&__avt {
+			margin-right: 10px;
+		}
 		&__info {
 			display: flex;
 			flex-direction: column;
@@ -68,8 +77,15 @@ const FormStyled = styled(Form)`
 	border-radius: 2px;
 
 	.ant-form-item {
-		flex: 1;
 		margin-bottom: 0;
+		margin-right: 8px;
+	}
+	.form_input {
+		&__message {
+			flex: 1;
+			border: 1px solid #999;
+			border-radius: 8px;
+		}
 	}
 `;
 
@@ -78,7 +94,6 @@ export default function ChatWindow() {
 		useContext(AppContext);
 
 	const { currentUser } = useContext(AuthContext);
-	console.log(currentUser);
 
 	const uid = currentUser?.uid;
 	const photoURL = currentUser?.photoURL;
@@ -87,35 +102,95 @@ export default function ChatWindow() {
 
 	const [inputValue, setInputValue] = useState("");
 	const [form] = Form.useForm();
-	const inputRef = useRef(null);
 	const messageListRef = useRef(null);
+	const [isInputDefault, setIsInputDefault] = useState(true);
+	const [messageImgs, setMessageImgs] = useState([]);
+	const inputRef = useRef();
+
+	const handleSetStationUInput = () => {
+		setIsInputDefault(!isInputDefault);
+	};
+
+	useEffect(() => {
+		const handleKeyDown = (event) => {
+			if (event.keyCode === 27) {
+				handleSetStationUInput();
+			}
+		};
+
+		if (!isInputDefault) {
+			document.addEventListener("keydown", handleKeyDown);
+		}
+
+		return () => {
+			document.removeEventListener("keydown", handleKeyDown);
+		};
+	}, [isInputDefault]);
+
 	const handleInputChange = (e) => {
 		setInputValue(e.target.value);
 	};
 
 	const handleOnSubmit = async () => {
 		try {
-			await addDoc(collection(db, "messages"), {
-				text: inputValue,
-				uid,
-				photoURL,
-				roomId: selectedRoom?.id,
-				displayName,
-				createdAt: serverTimestamp(),
-			});
+			if (messageImgs.length > 0) {
+				messageImgs.map((messageImg) => {
+					const storageRef = ref(storage, `MesageImages/${v4()}`);
 
-			form.resetFields(["message"]);
+					const uploadTask = uploadBytesResumable(storageRef, messageImg);
 
-			// Focus on the input again after submission
-			if (inputRef?.current) {
-				setTimeout(() => {
-					inputRef.current.focus();
+					uploadTask.on(
+						(error) => {
+							console.log("error", error);
+						},
+						() => {
+							getDownloadURL(uploadTask.snapshot.ref).then(
+								async (downloadURL) => {
+									await addDoc(collection(db, "messages"), {
+										img: downloadURL,
+										uid,
+										photoURL,
+										roomId: selectedRoom?.id,
+										displayName,
+										createdAt: serverTimestamp(),
+									});
+								},
+							);
+						},
+					);
 				});
+
+				setMessageImgs([]);
+			} else {
+				if (inputValue.trim() !== "") {
+					await addDoc(collection(db, "messages"), {
+						text: inputValue.trim(),
+						uid,
+						photoURL,
+						roomId: selectedRoom?.id,
+						displayName,
+						createdAt: serverTimestamp(),
+					});
+				}
+				if (inputRef?.current) {
+					setTimeout(() => {
+						inputRef.current.focus();
+					});
+				}
+				form.resetFields(["message"]);
+				setInputValue("");
 			}
 		} catch (error) {
 			console.error("Error adding document: ", error);
 		}
 	};
+
+	const fileInputRef = useRef();
+	const handleUploadChange = (event) => {
+		const fileList = Array.from(event.target.files);
+		setMessageImgs(fileList, ...messageImgs);
+	};
+
 	const condition = useMemo(
 		() => ({
 			fieldName: "roomId",
@@ -126,26 +201,28 @@ export default function ChatWindow() {
 	);
 
 	const messages = useFirestore("messages", condition);
-	console.log(messages);
-
-	useEffect(() => {
-		// scroll to bottom after message changed
-		if (messageListRef?.current) {
-			messageListRef.current.scrollTop =
-				messageListRef.current.scrollHeight + 50;
-		}
-	}, [messages]);
 
 	return (
 		<WrapperStyled>
 			{selectedRoom?.id ? (
 				<>
 					<HeaderStyled>
-						<div className='header__info'>
-							<p className='header__title'>{selectedRoom?.name}</p>
-							<span className='header__discription'>
-								{selectedRoom?.discription}
-							</span>
+						<div className='header__info_avt'>
+							<Avatar
+								className='header__avt'
+								size={"large"}
+								src={
+									selectedRoom?.avatar === "default"
+										? avatarDefault
+										: selectedRoom?.avatar
+								}
+							/>
+							<div className='header__info'>
+								<p className='header__title'>{selectedRoom?.name}</p>
+								<span className='header__discription'>
+									{selectedRoom.description}
+								</span>
+							</div>
 						</div>
 						<ButtonGroupStyled>
 							<Button
@@ -175,6 +252,7 @@ export default function ChatWindow() {
 									text={mes?.text}
 									photoUrl={mes?.photoURL}
 									displayName={mes?.displayName}
+									img={mes?.img}
 									createdAt={
 										mes?.createdAt
 											? moment(mes.createdAt.toDate()).calendar()
@@ -183,9 +261,14 @@ export default function ChatWindow() {
 								/>
 							))}
 						</MessageListStyled>
-						<FormStyled form={form}>
-							<Form.Item name='message'>
+						{/*  input message */}
+						<FormStyled form={form} className='form_ipunt'>
+							<Form.Item
+								name='message'
+								className='form_input__message'
+								hidden={!isInputDefault}>
 								<Input
+									ref={inputRef}
 									placeholder='nhập tin nhắn đi ku'
 									variant={false}
 									autoComplete='off'
@@ -193,6 +276,44 @@ export default function ChatWindow() {
 									onPressEnter={handleOnSubmit}
 								/>
 							</Form.Item>
+							{/* Butonn input img */}
+							<Form.Item hidden={!isInputDefault}>
+								<Button
+									onClick={handleSetStationUInput}
+									icon={<UploadOutlined />}></Button>
+							</Form.Item>
+
+							<Form.Item
+								name='Image'
+								style={{ flex: "1" }}
+								hidden={isInputDefault}>
+								<div
+									style={{
+										display: "flex",
+										flexDirection: "column",
+									}}>
+									<input
+										type='file'
+										multiple={true}
+										style={{ display: "none" }}
+										onChange={handleUploadChange}
+										ref={fileInputRef}
+										accept='.png,.jpg,.jpeg'
+									/>
+									<Button
+										icon={<UploadOutlined />}
+										style={{ justifySelf: "center" }}
+										onClick={() => fileInputRef.current.click()}>
+										Chọn file
+									</Button>
+									<div style={{ marginLeft: "10px" }}>
+										{messageImgs?.map((file, index) => (
+											<div key={index}>{file.name}</div>
+										))}
+									</div>
+								</div>
+							</Form.Item>
+
 							<Button type='primary' onClick={handleOnSubmit}>
 								Gửi
 							</Button>

@@ -21,7 +21,13 @@ const WrapperStyled = styled.div`
 	}
 `;
 
-export default function Message({ text, displayName, createdAt, photoUrl }) {
+export default function Message({
+	text,
+	displayName,
+	createdAt,
+	photoUrl,
+	img,
+}) {
 	return (
 		<WrapperStyled>
 			<div>
@@ -30,7 +36,8 @@ export default function Message({ text, displayName, createdAt, photoUrl }) {
 				<Typography.Text className='date'>{createdAt}</Typography.Text>
 			</div>
 			<div>
-				<Typography.Text className='content'>{text}</Typography.Text>
+				{text && <Typography.Text className='content'>{text}</Typography.Text>}
+				{img && <img src={img} style={{ maxWidth: "200px" }}></img>}
 			</div>
 		</WrapperStyled>
 	);

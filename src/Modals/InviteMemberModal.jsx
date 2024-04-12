@@ -1,16 +1,16 @@
-import { useContext, useState, useMemo, useEffect } from "react";
-import { Form, Modal, Select, Spin, Avatar } from "antd";
+import { Avatar, Form, Modal, Select, Spin } from "antd";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { AppContext } from "../context/AppProvider";
 // import { debounce } from "lodash";
-import { db } from "../firebase/config";
 import {
 	collection,
-	query,
-	where,
-	getDocs,
-	updateDoc,
 	doc,
+	getDocs,
+	query,
+	updateDoc,
+	where,
 } from "firebase/firestore";
+import { db } from "../firebase/config";
 
 function DebounceSelect({
 	fetchOptions,
@@ -20,7 +20,6 @@ function DebounceSelect({
 }) {
 	const [fetching, setFetching] = useState(false);
 	const [options, setOptions] = useState([]);
-
 	const debounce = (func, wait) => {
 		let timeoutId;
 		return (...args) => {
@@ -112,7 +111,7 @@ export default function InviteMemberModal() {
 
 		const newMembers = value.map((val) => val.value);
 		const updatedMembers = [...selectedRoom.members, ...newMembers];
-
+		console.log("newMember", newMembers);
 		try {
 			await updateDoc(doc(db, "rooms", isSelectedRoomId), {
 				members: updatedMembers,
