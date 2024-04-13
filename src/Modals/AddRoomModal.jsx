@@ -91,9 +91,10 @@ export default function AddRoomModal() {
 							style={{ width: "100px", height: "100px" }}
 							src={avatar.preview}
 						/>
-						<input
+						<Input
 							style={{ display: "none" }}
 							type='file'
+							accept='.png,.jpg,.jpeg,.gif'
 							onChange={handlePreviewAvatarRoom}
 							id='file'
 						/>

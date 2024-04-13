@@ -1,5 +1,5 @@
 import { UploadOutlined, UserAddOutlined } from "@ant-design/icons";
-import { Alert, Avatar, Button, Form, Input, Tooltip } from "antd";
+import { Alert, Avatar, Button, Form, Input, Spin, Tooltip } from "antd";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import moment from "moment";
@@ -105,6 +105,7 @@ export default function ChatWindow() {
 	const messageListRef = useRef(null);
 	const [isInputDefault, setIsInputDefault] = useState(true);
 	const [messageImgs, setMessageImgs] = useState([]);
+	const [isLoading, setIsLoading] = useState(false);
 	const inputRef = useRef();
 
 	const handleSetStationUInput = () => {
@@ -118,21 +119,22 @@ export default function ChatWindow() {
 			}
 		};
 
-		if (!isInputDefault) {
+		if (!isInputDefault || !isLoading) {
 			document.addEventListener("keydown", handleKeyDown);
 		}
 
 		return () => {
 			document.removeEventListener("keydown", handleKeyDown);
 		};
-	}, [isInputDefault]);
+	}, [isInputDefault, isLoading]);
 
 	const handleInputChange = (e) => {
 		setInputValue(e.target.value);
 	};
-
 	const handleOnSubmit = async () => {
 		try {
+			setIsLoading(true); // Bắt đầu quá trình loading
+
 			if (messageImgs.length > 0) {
 				const uploadPromises = messageImgs.map((messageImg) => {
 					return new Promise((resolve, reject) => {
@@ -141,7 +143,9 @@ export default function ChatWindow() {
 
 						uploadTask.on(
 							"state_changed",
-							(snapshot) => {},
+							(snapshot) => {
+								// Cập nhật trạng thái upload nếu cần
+							},
 							(error) => {
 								console.log("error", error);
 								reject(error);
@@ -191,6 +195,8 @@ export default function ChatWindow() {
 			}
 		} catch (error) {
 			console.error("Error adding document: ", error);
+		} finally {
+			setIsLoading(false); // Kết thúc quá trình loading, dù thành công hay không
 		}
 	};
 
@@ -198,6 +204,7 @@ export default function ChatWindow() {
 	const handleUploadChange = (event) => {
 		const fileList = Array.from(event.target.files);
 		setMessageImgs(fileList, ...messageImgs);
+		event.target.value = null;
 	};
 
 	const condition = useMemo(
@@ -280,6 +287,7 @@ export default function ChatWindow() {
 									ref={inputRef}
 									placeholder='nhập tin nhắn đi ku'
 									variant={false}
+									disabled={isLoading}
 									autoComplete='off'
 									onChange={handleInputChange}
 									onPressEnter={handleOnSubmit}
@@ -307,23 +315,30 @@ export default function ChatWindow() {
 										style={{ display: "none" }}
 										onChange={handleUploadChange}
 										ref={fileInputRef}
-										accept='.png,.jpg,.jpeg'
+										accept='.png,.jpg,.jpeg,.gif'
 									/>
 									<Button
 										icon={<UploadOutlined />}
+										disabled={isLoading}
 										style={{ justifySelf: "center" }}
 										onClick={() => fileInputRef.current.click()}>
 										Chọn file
 									</Button>
 									<div style={{ marginLeft: "10px" }}>
 										{messageImgs?.map((file, index) => (
-											<div key={index}>{file.name}</div>
+											<div key={index}>
+												{isLoading && <Spin size='small'></Spin>}
+												<span> {file.name}</span>
+											</div>
 										))}
 									</div>
 								</div>
 							</Form.Item>
 
-							<Button type='primary' onClick={handleOnSubmit}>
+							<Button
+								type='primary'
+								onClick={handleOnSubmit}
+								disabled={isLoading}>
 								Gửi
 							</Button>
 						</FormStyled>
