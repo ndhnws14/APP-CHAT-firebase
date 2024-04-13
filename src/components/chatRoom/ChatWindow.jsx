@@ -138,7 +138,7 @@ export default function ChatWindow() {
 			if (messageImgs.length > 0) {
 				const uploadPromises = messageImgs.map((messageImg) => {
 					return new Promise((resolve, reject) => {
-						const storageRef = ref(storage, `MesageImages/${v4()}`);
+						const storageRef = ref(storage, `MessageImages/${v4()}`);
 						const uploadTask = uploadBytesResumable(storageRef, messageImg);
 
 						uploadTask.on(
