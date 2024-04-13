@@ -134,32 +134,41 @@ export default function ChatWindow() {
 	const handleOnSubmit = async () => {
 		try {
 			if (messageImgs.length > 0) {
-				messageImgs.map((messageImg) => {
-					const storageRef = ref(storage, `MesageImages/${v4()}`);
+				const uploadPromises = messageImgs.map((messageImg) => {
+					return new Promise((resolve, reject) => {
+						const storageRef = ref(storage, `MesageImages/${v4()}`);
+						const uploadTask = uploadBytesResumable(storageRef, messageImg);
 
-					const uploadTask = uploadBytesResumable(storageRef, messageImg);
-
-					uploadTask.on(
-						(error) => {
-							console.log("error", error);
-						},
-						() => {
-							getDownloadURL(uploadTask.snapshot.ref).then(
-								async (downloadURL) => {
-									await addDoc(collection(db, "messages"), {
-										img: downloadURL,
-										uid,
-										photoURL,
-										roomId: selectedRoom?.id,
-										displayName,
-										createdAt: serverTimestamp(),
+						uploadTask.on(
+							"state_changed",
+							(snapshot) => {},
+							(error) => {
+								console.log("error", error);
+								reject(error);
+							},
+							() => {
+								getDownloadURL(uploadTask.snapshot.ref)
+									.then(async (downloadURL) => {
+										await addDoc(collection(db, "messages"), {
+											img: downloadURL,
+											uid,
+											photoURL,
+											roomId: selectedRoom?.id,
+											displayName,
+											createdAt: serverTimestamp(),
+										});
+										resolve();
+									})
+									.catch((error) => {
+										console.log("error", error);
+										reject(error);
 									});
-								},
-							);
-						},
-					);
+							},
+						);
+					});
 				});
 
+				await Promise.all(uploadPromises);
 				setMessageImgs([]);
 			} else {
 				if (inputValue.trim() !== "") {
