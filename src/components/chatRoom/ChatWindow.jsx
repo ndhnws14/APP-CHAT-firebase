@@ -1,5 +1,5 @@
 import { UploadOutlined, UserAddOutlined } from "@ant-design/icons";
-import { Alert, Avatar, Button, Form, Input, Spin, Tooltip } from "antd";
+import { Alert, Avatar, Button, Form, Input, Spin, Tooltip, message } from "antd";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import moment from "moment";
@@ -105,12 +105,18 @@ export default function ChatWindow() {
 	const messageListRef = useRef(null);
 	const [isInputDefault, setIsInputDefault] = useState(true);
 	const [messageImgs, setMessageImgs] = useState([]);
+	const [messages, setMessages] = useState([]);
 	const [isLoading, setIsLoading] = useState(false);
 	const inputRef = useRef();
 
 	const handleSetStationUInput = () => {
 		setIsInputDefault(!isInputDefault);
 	};
+
+	// scrolling
+	useEffect(() => {
+		messageListRef.current?.scrollIntoView();
+	}, [messages]);
 
 	useEffect(() => {
 		const handleKeyDown = (event) => {
@@ -127,6 +133,7 @@ export default function ChatWindow() {
 			document.removeEventListener("keydown", handleKeyDown);
 		};
 	}, [isInputDefault, isLoading]);
+	
 
 	const handleInputChange = (e) => {
 		setInputValue(e.target.value);
@@ -138,7 +145,7 @@ export default function ChatWindow() {
 			if (messageImgs.length > 0) {
 				const uploadPromises = messageImgs.map((messageImg) => {
 					return new Promise((resolve, reject) => {
-						const storageRef = ref(storage, `MessageImages/${v4()}`);
+						const storageRef = ref(storage, `MesageImages/${v4()}`);
 						const uploadTask = uploadBytesResumable(storageRef, messageImg);
 
 						uploadTask.on(
@@ -216,12 +223,17 @@ export default function ChatWindow() {
 		[selectedRoom?.id],
 	);
 
-	const messages = useFirestore("messages", condition);
+	const fetchedMessages = useFirestore("messages", condition);
+  
+	useEffect(() => {
+		if (fetchedMessages.length > 0) {
+		setMessages(fetchedMessages);
+		}
+	}, [fetchedMessages]);
 
 	return (
 		<WrapperStyled>
-			{selectedRoom?.id ? (
-				<>
+			{selectedRoom?.id ? (<>
 					<HeaderStyled>
 						<div className='header__info_avt'>
 							<Avatar
@@ -276,6 +288,7 @@ export default function ChatWindow() {
 									}
 								/>
 							))}
+							<div ref={ messageListRef } /> {/* scrolling */}
 						</MessageListStyled>
 						{/*  input message */}
 						<FormStyled form={form} className='form_ipunt'>
